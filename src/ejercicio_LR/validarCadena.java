@@ -24,9 +24,12 @@ public class validarCadena extends javax.swing.JFrame
     MessageDialog OptionPane = new MessageDialog(this);
     Fondo fondo = new Fondo();
     boolean errSint = false; 
-    boolean errSem = false;
+    boolean errTabSim = false;
+    boolean errTabAsig = false;
+    String tipoSem = "";
     Stack<String> pilaSint = new Stack<>();
-    Stack<String> pilaSem = new Stack<>();
+    Stack<Integer> pilaSem = new Stack<>();
+    Stack<String> temp = new Stack<>();
     List<String[]> tablaSim = new ArrayList<>();
     String not[] = {"$", "P", "Tipo", "V", "A", "S", "E", "T", "F"};
     String columnas[] = {"id", "num", "int", "float", "char", ",", ";", "+", "-", "*", "/", "(", ")", "=", "$", "P", "Tipo", "V", "A", "S", "E", "T", "F"};
@@ -98,6 +101,7 @@ public class validarCadena extends javax.swing.JFrame
     private void Lexico()
     {
         boolean ban = true;
+        int con = 0;
         File archivo = new File("Compilacion.yum");
         PrintWriter escribir;
         try {
@@ -121,6 +125,10 @@ public class validarCadena extends javax.swing.JFrame
                             }
                             System.out.println();
                         }
+                    System.out.println("Contenido de la pila:");
+        for (Integer numero : pilaSem) {
+            System.out.println(numero);
+        }
                     Sintactico("$");
                     ban = false;                         
                     if(errSint)
@@ -131,14 +139,34 @@ public class validarCadena extends javax.swing.JFrame
                     case Error:
                         mostrarMensaje("ERROR", "El lexema " + lexer.lexeme + " es irreconocible", "/img/Close.png");
                         return;
-                    case id, idI, idF, idC, num:                        
+                    case id, idI, idF, idC, num:                              
                         if(token == Tokens.idI || token == Tokens.idF || token == Tokens.idC) {
                             Tabla(String.valueOf(token), String.valueOf(lexer.lexeme));
-                            token = Tokens.id;                        
-                        }
-                        Sintactico(String.valueOf(token));                    
+                            temp.push(lexer.lexeme);
+                            token = Tokens.id;               
+                        } else 
+                            if(token == Tokens.id) {
+                                if(!buscarAsig(lexer.lexeme)) {
+                                    errTabAsig = true;               
+                                    break;
+                                }
+                            } else
+                                if(token == Tokens.num)
+                                    temp.push(lexer.lexeme);
+                        con = 0;
+                        Sintactico(String.valueOf(token));                        
+                        break;
+                    case semicolon:
+                        con++;
+                        if(con == 1)
+                            Sintactico(String.valueOf(lexer.lexeme));
+                        else {
+                            mostrarMensaje("CADENA INVÁLIDA", "La cadena no es aceptada dentro de esta gramática, existe un ; adicional", "/img/Close.png");                    
+                            return;
+                        }                            
                         break;
                     default:
+                        con = 0;
                         Sintactico(String.valueOf(lexer.lexeme));                        
                         break;
                 }
@@ -147,10 +175,15 @@ public class validarCadena extends javax.swing.JFrame
                     mostrarMensaje("CADENA INVÁLIDA", "La cadena no es aceptada dentro de esta gramática, se esperaba un " + Esperado(), "/img/Close.png");                    
                     return;
                 } else
-                    if(errSem) {
-                        mostrarMensaje("ERROR", "La variable " + lexer.lexeme + " ya se encuentra definida", "/img/Close.png");                                            
+                    if(errTabSim) {
+                        mostrarMensaje("ERROR", "La variable " + lexer.lexeme + " ya se encuentra definida como " + tipoSem, "/img/Close.png");                                            
                         return;
                     }
+                    else
+                        if(errTabAsig) {
+                            mostrarMensaje("ERROR", "La variable " + lexer.lexeme + " no se encuentra definida", "/img/Close.png");                                                                        
+                            return;
+                        }
                     token = lexer.yylex();
             }  
         }
@@ -186,10 +219,20 @@ public class validarCadena extends javax.swing.JFrame
                 pilaSint.push(prod[0]);
                 pilaSint.push(nuevo);
                 
+                if(dato.equals("F -> num")) {
+                    String entero = "^[+-]?\\d+$";
+                    String variable = temp.pop();
+                    
+                    if(variable.matches(entero))
+                        pilaSem.push(0);
+                    else
+                        pilaSem.push(1);                                   
+                }
+                
                 renglon = Integer.parseInt(pilaSint.peek());
                 col = buscarColumna(token);
-                dato = anSint[renglon][col];               
-
+                dato = anSint[renglon][col];                
+                
                 if(dato.equals("P' -> P")) {
                     mostrarMensaje("CADENA ACEPTADA", "La cadena es aceptada dentro de esta gramática", "/img/Info.png");
                     ban =  false;
@@ -229,7 +272,7 @@ public class validarCadena extends javax.swing.JFrame
     {
         if(!tablaSim.isEmpty()) {
             if(!Buscar(lexema))
-                Tipo(token, lexema);
+                Tipo(token, lexema);            
         } else
             Tipo(token, lexema);
     }
@@ -238,7 +281,8 @@ public class validarCadena extends javax.swing.JFrame
     {
         for(String[] vars : tablaSim)
             if(vars[0].equals(lexema)) {
-                errSem = true;
+                errTabSim = true;    
+                tipoSem = vars[1];
                 return true;
             }
         return false;
@@ -257,6 +301,16 @@ public class validarCadena extends javax.swing.JFrame
                 tablaSim.add(new String[]{lexema, "char"});
                 break;
         }
+    }
+    
+    private boolean buscarAsig(String lexema)
+    {
+        for(String[] vars: tablaSim)
+            if(vars[0].equals(lexema)) {
+                tipoSem = vars[1];
+                return true;
+            }
+        return false;
     }
             
     @SuppressWarnings("unchecked")
@@ -320,8 +374,11 @@ public class validarCadena extends javax.swing.JFrame
         pilaSint.push("$");
         pilaSint.push("0");
         pilaSem.clear();
+        temp.clear();
         errSint = false;
-        errSem = false;
+        errTabSim = false;
+        errTabAsig = false;
+        tipoSem = "";
         tablaSim = new ArrayList<>();
         
         Lexico();
