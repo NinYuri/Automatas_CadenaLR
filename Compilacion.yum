@@ -1,1 +1,1 @@
-int a, b; c = -90.78;
+int a,b; float c; c = b * 9.8/(7-c);

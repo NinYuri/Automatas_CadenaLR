@@ -119,16 +119,23 @@ public class validarCadena extends javax.swing.JFrame
 
             while(ban) {                
                 if(token == null) {
+                    //borrar
                     for (String[] fila : tablaSim) {
                             for (String dato : fila) {
                                 System.out.print(dato + "\t");
                             }
                             System.out.println();
                         }
-                    System.out.println("Contenido de la pila:");
-        for (Integer numero : pilaSem) {
-            System.out.println(numero);
-        }
+                        System.out.println("Contenido de la pila:");
+                            for (Integer numero : pilaSem) {
+                                System.out.println(numero);
+                            }
+                        System.out.println("Contenido de la temporal:");
+                            for (String var : temp) {
+                                System.out.println(var);
+                            } 
+                            System.out.println();
+                    //hasta aqui
                     Sintactico("$");
                     ban = false;                         
                     if(errSint)
@@ -142,11 +149,11 @@ public class validarCadena extends javax.swing.JFrame
                     case id, idI, idF, idC, num:                              
                         if(token == Tokens.idI || token == Tokens.idF || token == Tokens.idC) {
                             Tabla(String.valueOf(token), String.valueOf(lexer.lexeme));
-                            temp.push(lexer.lexeme);
                             token = Tokens.id;               
                         } else 
                             if(token == Tokens.id) {
-                                if(!buscarAsig(lexer.lexeme)) {
+                                temp.push(lexer.lexeme);
+                                if(!buscarAsig(lexer.lexeme)) {                                    
                                     errTabAsig = true;               
                                     break;
                                 }
@@ -200,6 +207,7 @@ public class validarCadena extends javax.swing.JFrame
         int col = buscarColumna(token);
         int renglon = Integer.parseInt(pilaSint.peek());
         String dato = anSint[renglon][col];
+        String entero = "^[+-]?\\d+$";
         
         if(!dato.isEmpty()) {
             while(!dato.matches("^[1-9][0-9]*$")) {
@@ -218,16 +226,15 @@ public class validarCadena extends javax.swing.JFrame
                 String nuevo = anSint[Integer.parseInt(pilaSint.peek())][buscarColumna(prod[0].trim())];
                 pilaSint.push(prod[0]);
                 pilaSint.push(nuevo);
-                
-                if(dato.equals("F -> num")) {
-                    String entero = "^[+-]?\\d+$";
+                             
+                if(dato.equals("F -> num")) {                    
                     String variable = temp.pop();
                     
                     if(variable.matches(entero))
                         pilaSem.push(0);
                     else
                         pilaSem.push(1);                                   
-                }
+                }                
                 
                 renglon = Integer.parseInt(pilaSint.peek());
                 col = buscarColumna(token);
@@ -239,7 +246,20 @@ public class validarCadena extends javax.swing.JFrame
                     break;
                 }
             }    
-            if(ban) {
+            if(ban) {             
+                if(col == 0 && (renglon == 9 || renglon == 12 || renglon == 27 || renglon == 28 || renglon == 29 || renglon == 30))
+                    if(buscarAsig(temp.pop()))
+                        pilaSem.push(Integer.parseInt(tipoSem));
+                        
+                if(col == 1 && renglon == 27) {
+                    String variable = temp.pop();
+                    
+                    if(variable.matches(entero))
+                        pilaSem.push(0);
+                    else
+                        pilaSem.push(1); 
+                }
+                                            
                 pilaSint.push(token);
                 pilaSint.push(dato);
             }
@@ -292,13 +312,13 @@ public class validarCadena extends javax.swing.JFrame
     {
         switch(token) {
             case "idI":
-                tablaSim.add(new String[]{lexema, "int"});
+                tablaSim.add(new String[]{lexema, "0"});
                 break;
             case "idF":
-                tablaSim.add(new String[]{lexema, "float"});
+                tablaSim.add(new String[]{lexema, "1"});
                 break;
             case "idC":
-                tablaSim.add(new String[]{lexema, "char"});
+                tablaSim.add(new String[]{lexema, "2"});
                 break;
         }
     }
