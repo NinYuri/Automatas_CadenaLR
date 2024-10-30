@@ -26,7 +26,9 @@ public class validarCadena extends javax.swing.JFrame
     boolean errSint = false; 
     boolean errTabSim = false;
     boolean errTabAsig = false;
+    boolean errSem = false;    
     String tipoSem = "";
+    int t1, t2;
     Stack<String> pilaSint = new Stack<>();
     Stack<Integer> pilaSem = new Stack<>();
     Stack<String> temp = new Stack<>();
@@ -118,28 +120,16 @@ public class validarCadena extends javax.swing.JFrame
             Tokens token = lexer.yylex();
 
             while(ban) {                
-                if(token == null) {
-                    //borrar
-                    for (String[] fila : tablaSim) {
-                            for (String dato : fila) {
-                                System.out.print(dato + "\t");
-                            }
-                            System.out.println();
-                        }
-                        System.out.println("Contenido de la pila:");
-                            for (Integer numero : pilaSem) {
-                                System.out.println(numero);
-                            }
-                        System.out.println("Contenido de la temporal:");
-                            for (String var : temp) {
-                                System.out.println(var);
-                            } 
-                            System.out.println();
-                    //hasta aqui
+                if(token == null) {                    
                     Sintactico("$");
                     ban = false;                         
                     if(errSint)
-                        mostrarMensaje("CADENA INVÁLIDA", "La cadena no es aceptada dentro de esta gramática, se esperaba un " + Esperado(), "/img/Close.png");                        
+                        mostrarMensaje("CADENA INVÁLIDA", "La cadena no es aceptada dentro de esta gramática, se esperaba un " + Esperado(), "/img/Close.png");
+                    else
+                        if(errSem) {
+                            String variable = temp.pop();
+                            mostrarMensaje("ERROR", "La variable " + variable + " de tipo " + tipoStr(String.valueOf(t1)) + " no puede recibir un " + tipoStr(String.valueOf(t2)), "/img/Close.png");                                                                                                        
+                        }                    
                     return;
                 }
                 switch(token) {
@@ -183,15 +173,20 @@ public class validarCadena extends javax.swing.JFrame
                     return;
                 } else
                     if(errTabSim) {
-                        mostrarMensaje("ERROR", "La variable " + lexer.lexeme + " ya se encuentra definida como " + tipoSem, "/img/Close.png");                                            
+                        mostrarMensaje("ERROR", "La variable " + lexer.lexeme + " ya se encuentra definida como " + tipoStr(tipoSem), "/img/Close.png");                                            
                         return;
-                    }
-                    else
+                    } else
                         if(errTabAsig) {
                             mostrarMensaje("ERROR", "La variable " + lexer.lexeme + " no se encuentra definida", "/img/Close.png");                                                                        
                             return;
-                        }
-                    token = lexer.yylex();
+                        } else
+                            if(errSem) {
+                                String variable = temp.pop();
+                                mostrarMensaje("ERROR",  "La operación entre " + tipoStr(String.valueOf(t1)) + " y " + tipoStr(String.valueOf(t2)) + " no puede realizarse", "/img/Close.png");
+                                return;
+                            }
+                            
+                token = lexer.yylex();
             }  
         }
         catch(FileNotFoundException ex) {
@@ -234,7 +229,36 @@ public class validarCadena extends javax.swing.JFrame
                         pilaSem.push(0);
                     else
                         pilaSem.push(1);                                   
-                }                
+                }
+                if(dato.equals("F -> id")){
+                    temp.pop();
+                    pilaSem.push(Integer.parseInt(tipoSem));
+                }
+                
+                if(dato.equals("A -> id = S ;")) {
+                    t2 = pilaSem.pop();
+                    t1 = pilaSem.pop();
+                    
+                    if(reglaAsig[t1][t2])
+                        pilaSem.push(reglaExp[t1][t2]);
+                    else {
+                        errSem = true;
+                        ban = false;
+                        break;
+                    }
+                }
+                if(dato.equals("E -> E + T") || dato.equals("E -> E - T") || dato.equals("T -> T * F") || dato.equals("T -> T / F")) {
+                    t2 = pilaSem.pop();
+                    t1 = pilaSem.pop();
+                    
+                    if(reglaExp[t1][t2] != -1) 
+                        pilaSem.push(reglaExp[t1][t2]);
+                    else {
+                        errSem = true;
+                        ban = false;
+                        break;
+                    }
+                }                    
                 
                 renglon = Integer.parseInt(pilaSint.peek());
                 col = buscarColumna(token);
@@ -247,18 +271,9 @@ public class validarCadena extends javax.swing.JFrame
                 }
             }    
             if(ban) {             
-                if(col == 0 && (renglon == 9 || renglon == 12 || renglon == 27 || renglon == 28 || renglon == 29 || renglon == 30))
-                    if(buscarAsig(temp.pop()))
+                if(col == 0 && renglon == 12)
+                    if(buscarAsig(temp.peek()))
                         pilaSem.push(Integer.parseInt(tipoSem));
-                        
-                if(col == 1 && renglon == 27) {
-                    String variable = temp.pop();
-                    
-                    if(variable.matches(entero))
-                        pilaSem.push(0);
-                    else
-                        pilaSem.push(1); 
-                }
                                             
                 pilaSint.push(token);
                 pilaSint.push(dato);
@@ -321,6 +336,19 @@ public class validarCadena extends javax.swing.JFrame
                 tablaSim.add(new String[]{lexema, "2"});
                 break;
         }
+    }
+    
+    private String tipoStr(String tipo)
+    {
+        switch(tipo) {
+            case "0":
+                return "int";
+            case "1":
+                return "float";
+            case "2":
+                return "char";
+        }
+        return "";
     }
     
     private boolean buscarAsig(String lexema)
@@ -398,10 +426,28 @@ public class validarCadena extends javax.swing.JFrame
         errSint = false;
         errTabSim = false;
         errTabAsig = false;
+        errSem = false;
         tipoSem = "";
         tablaSim = new ArrayList<>();
         
         Lexico();
+        //borrar
+                    for (String[] fila : tablaSim) {
+                            for (String dato : fila) {
+                                System.out.print(dato + "\t");
+                            }
+                            System.out.println();
+                        }
+                        System.out.println("Contenido de la pila:");
+                            for (Integer numero : pilaSem) {
+                                System.out.println(numero);
+                            }
+                        System.out.println("Contenido de la temporal:");
+                            for (String var : temp) {
+                                System.out.println(var);
+                            } 
+                            System.out.println();
+                    //hasta aqui
     }//GEN-LAST:event_btnValidarMouseClicked
 
     /**
