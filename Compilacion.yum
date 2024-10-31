@@ -1,1 +1,1 @@
-int a, b; float c; char f; c = 90 + b * (c /f);
+int a,b; char c; c = 8;

@@ -26,12 +26,16 @@ public class validarCadena extends javax.swing.JFrame
     boolean errSint = false; 
     boolean errTabSim = false;
     boolean errTabAsig = false;
-    boolean errSem = false;    
+    boolean errSem = false;  
+    boolean banPosfija = false;
     String tipoSem = "";
+    String asig = "";
     int t1, t2;
     Stack<String> pilaSint = new Stack<>();
     Stack<Integer> pilaSem = new Stack<>();
     Stack<String> temp = new Stack<>();
+    Stack<String> pilaOpers = new Stack<>();
+    Stack<String> expPosfija = new Stack<>();
     List<String[]> tablaSim = new ArrayList<>();
     String not[] = {"$", "P", "Tipo", "V", "A", "S", "E", "T", "F"};
     String columnas[] = {"id", "num", "int", "float", "char", ",", ";", "+", "-", "*", "/", "(", ")", "=", "$", "P", "Tipo", "V", "A", "S", "E", "T", "F"};
@@ -122,14 +126,14 @@ public class validarCadena extends javax.swing.JFrame
             while(ban) {                
                 if(token == null) {                    
                     Sintactico("$");
-                    ban = false;                         
+                    asig = temp.pop();
+                    ban = false;
+                    codInter();
                     if(errSint)
                         mostrarMensaje("CADENA INVÁLIDA", "La cadena no es aceptada dentro de esta gramática, se esperaba un " + Esperado(), "/img/Close.png");
                     else
-                        if(errSem) {
-                            String variable = temp.pop();
-                            mostrarMensaje("ERROR", "La variable " + variable + " de tipo " + tipoStr(String.valueOf(t1)) + " no puede recibir un " + tipoStr(String.valueOf(t2)), "/img/Close.png");                                                                                                        
-                        }                    
+                        if(errSem)                            
+                            mostrarMensaje("ERROR", "La variable " + asig + " de tipo " + tipoStr(String.valueOf(t1)) + " no puede recibir un " + tipoStr(String.valueOf(t2)), "/img/Close.png");                                                                                                                                           
                     return;
                 }
                 switch(token) {
@@ -151,12 +155,17 @@ public class validarCadena extends javax.swing.JFrame
                                 if(token == Tokens.num)
                                     temp.push(lexer.lexeme);
                         con = 0;
-                        Sintactico(String.valueOf(token));                        
+                        Sintactico(String.valueOf(token));        
+                        if(banPosfija)
+                            Posfija(String.valueOf(token), String.valueOf(lexer.lexeme));
                         break;
                     case semicolon:
                         con++;
-                        if(con == 1)
+                        if(con == 1) {
                             Sintactico(String.valueOf(lexer.lexeme));
+                            if(banPosfija)
+                                Posfija(String.valueOf(token), String.valueOf(lexer.lexeme));                                                    
+                        }
                         else {
                             mostrarMensaje("CADENA INVÁLIDA", "La cadena no es aceptada dentro de esta gramática, existe un ; adicional", "/img/Close.png");                    
                             return;
@@ -164,7 +173,9 @@ public class validarCadena extends javax.swing.JFrame
                         break;
                     default:
                         con = 0;
-                        Sintactico(String.valueOf(lexer.lexeme));                        
+                        Sintactico(String.valueOf(lexer.lexeme));    
+                        if(banPosfija)
+                            Posfija(String.valueOf(token), String.valueOf(lexer.lexeme));
                         break;
                 }
                 if(errSint) {
@@ -181,7 +192,6 @@ public class validarCadena extends javax.swing.JFrame
                             return;
                         } else
                             if(errSem) {
-                                String variable = temp.pop();
                                 mostrarMensaje("ERROR",  "La operación entre " + tipoStr(String.valueOf(t1)) + " y " + tipoStr(String.valueOf(t2)) + " no puede realizarse", "/img/Close.png");
                                 return;
                             }
@@ -274,6 +284,9 @@ public class validarCadena extends javax.swing.JFrame
                 if(col == 0 && renglon == 12)
                     if(buscarAsig(temp.peek()))
                         pilaSem.push(Integer.parseInt(tipoSem));
+                
+                if(col == 13 && renglon == 7)
+                    banPosfija = true;                
                                             
                 pilaSint.push(token);
                 pilaSint.push(dato);
@@ -360,6 +373,101 @@ public class validarCadena extends javax.swing.JFrame
             }
         return false;
     }
+    
+    private void Posfija(String token, String lexema)
+    {
+        int prioCima, prioToken;
+        if(token.equals("id") || token.equals("num"))
+            expPosfija.push(lexema);
+        else {
+            switch(lexema) {
+                case "(":
+                    pilaOpers.push(lexema);
+                    break;
+                case ")":
+                    while(!pilaOpers.peek().equals("("))
+                        expPosfija.push(pilaOpers.pop());
+                    pilaOpers.pop();
+                    break;
+                case ";":
+                    while(!pilaOpers.isEmpty())
+                        expPosfija.push(pilaOpers.pop());
+                    break;
+                default:  
+                    if(!pilaOpers.isEmpty()) {
+                        prioCima = Prioridad(pilaOpers.peek());
+                        prioToken = Prioridad(lexema);
+                                                
+                        if(prioCima == 0)
+                            pilaOpers.push(lexema);
+                        else {
+                            while(!pilaOpers.isEmpty() && prioCima >= prioToken) {
+                                expPosfija.push(pilaOpers.pop());
+                                prioCima = Prioridad(pilaOpers.peek());
+                            }                            
+                            pilaOpers.push(lexema);
+                        }
+                    }
+                    else
+                        if(!lexema.equals("="))
+                            pilaOpers.push(lexema);
+            }
+        }
+    }
+    
+    private int Prioridad(String lexema)
+    {
+        switch(lexema) {
+            case "+", "-":
+                return 1;
+            case "*", "/":
+                return 2;
+        }
+        return 0;
+    }
+    
+    private void codInter()
+    {
+        int cont = 1;
+        for(int i = expPosfija.size() - 1; i >= 0; i--)
+            temp.push(expPosfija.pop()); 
+        
+        while(!temp.isEmpty()) {            
+            String var = temp.pop();
+            
+            if(var.matches("[a-zA-Z]") || var.matches("\\d+"))
+                expPosfija.push("v" + cont++ + " = " + var);
+            else
+                switch(var) {
+                    case "+":
+                        cont -= 2;
+                        if(cont == 0)
+                            expPosfija.push("v" + ++cont + " = +v" + cont);
+                        else
+                            expPosfija.push("v" + cont + " = v" + cont + " + v" + ++cont);
+                        break;
+                    case "-":
+                        cont -= 2;
+                        if(cont == 0)
+                            expPosfija.push("v" + ++cont + " = -v" + cont); 
+                        else
+                            expPosfija.push("v" + cont + " = v" + cont + " - v" + ++cont);
+                        break;
+                    case "/":
+                        cont -= 2;
+                        expPosfija.push("v" + cont + " = v" + cont + " / v" + ++cont);
+                        break;
+                    case "*":
+                        cont -= 2;
+                        expPosfija.push("v" + cont + " = v" + cont + " * v" + ++cont);                       
+                }            
+        }
+        cont--;
+        if(cont == 0)
+            expPosfija.push(asig + " = v" + ++cont);
+        else
+            expPosfija.push(asig + " = v" + cont);
+    }
             
     @SuppressWarnings("unchecked")
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
@@ -423,31 +531,34 @@ public class validarCadena extends javax.swing.JFrame
         pilaSint.push("0");
         pilaSem.clear();
         temp.clear();
+        pilaOpers.clear();
+        expPosfija.clear();
         errSint = false;
         errTabSim = false;
         errTabAsig = false;
         errSem = false;
+        banPosfija = false;
         tipoSem = "";
         tablaSim = new ArrayList<>();
         
         Lexico();
-        //borrar
-                    for (String[] fila : tablaSim) {
-                            for (String dato : fila) {
-                                System.out.print(dato + "\t");
-                            }
-                            System.out.println();
-                        }
-                        System.out.println("Contenido de la pila:");
-                            for (Integer numero : pilaSem) {
-                                System.out.println(numero);
-                            }
-                        System.out.println("Contenido de la temporal:");
-                            for (String var : temp) {
-                                System.out.println(var);
-                            } 
-                            System.out.println();
-                    //hasta aqui
+        
+        System.out.println("TABLA DE SIMBOLOS");
+        for(String[] fila : tablaSim) {
+            for(String dato : fila)
+                System.out.print(dato + "\t");            
+            System.out.println();
+        }
+        System.out.println();
+        
+        System.out.println("PILA SEMANTICA");
+        for(Integer numero : pilaSem)
+            System.out.println(numero);
+        System.out.println();
+        
+        System.out.println("CODIGO INTERMEDIO");
+            for(String var : expPosfija)
+                System.out.println(var);
     }//GEN-LAST:event_btnValidarMouseClicked
 
     /**
