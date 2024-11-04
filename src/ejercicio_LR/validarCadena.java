@@ -340,7 +340,7 @@ public class validarCadena extends javax.swing.JFrame
     {
         switch(token) {
             case "idI":
-                tablaSim.add(new String[]{lexema, "0"});
+                tablaSim.add(new String[]{lexema, "0"});                
                 break;
             case "idF":
                 tablaSim.add(new String[]{lexema, "1"});
@@ -427,46 +427,76 @@ public class validarCadena extends javax.swing.JFrame
     }
     
     private void codInter()
-    {
-        int cont = 1;
+    {                
+        int cont = 1, ci = 0, cf = 0, cc = 0;
         for(int i = expPosfija.size() - 1; i >= 0; i--)
             temp.push(expPosfija.pop()); 
+        
+        for(String[] var: tablaSim) {
+            String lexema = var[0];
+            String tipo = var[1];
+            
+            if(tipoStr(tipo).equals("int")) {
+                ++ci;
+                if(ci == 1) {
+                    expPosfija.push("int");
+                    expPosfija.push(lexema + " ;");
+                } else
+                    expPosfija.push("int " + lexema + " ;");
+            }
+            if(tipoStr(tipo).equals("float")) {
+                ++cf;
+                if(cf == 1) {
+                    expPosfija.push("float");
+                    expPosfija.push(lexema + " ;");
+                } else
+                    expPosfija.push("float " + lexema + " ;");
+            }
+            if(tipoStr(tipo).equals("char")) {
+                ++cc;
+                if(cc == 1) {
+                    expPosfija.push("char");
+                    expPosfija.push(lexema + " ;");
+                } else
+                    expPosfija.push("char " + lexema + " ;");
+            }           
+        }            
         
         while(!temp.isEmpty()) {            
             String var = temp.pop();
             
             if(var.matches("[a-zA-Z]") || var.matches("\\d+"))
-                expPosfija.push("v" + cont++ + " = " + var);
+                expPosfija.push("v" + cont++ + " = " + var + " ;");
             else
                 switch(var) {
                     case "+":
                         cont -= 2;
                         if(cont == 0)
-                            expPosfija.push("v" + ++cont + " = +v" + cont);
+                            expPosfija.push("v" + ++cont + " = +v" + cont + " ;");
                         else
-                            expPosfija.push("v" + cont + " = v" + cont + " + v" + ++cont);
+                            expPosfija.push("v" + cont + " = v" + cont + " + v" + ++cont + " ;");
                         break;
                     case "-":
                         cont -= 2;
                         if(cont == 0)
-                            expPosfija.push("v" + ++cont + " = -v" + cont); 
+                            expPosfija.push("v" + ++cont + " = -v" + cont + " ;"); 
                         else
-                            expPosfija.push("v" + cont + " = v" + cont + " - v" + ++cont);
+                            expPosfija.push("v" + cont + " = v" + cont + " - v" + ++cont + " ;");
                         break;
                     case "/":
                         cont -= 2;
-                        expPosfija.push("v" + cont + " = v" + cont + " / v" + ++cont);
+                        expPosfija.push("v" + cont + " = v" + cont + " / v" + ++cont + " ;");
                         break;
                     case "*":
                         cont -= 2;
-                        expPosfija.push("v" + cont + " = v" + cont + " * v" + ++cont);                       
+                        expPosfija.push("v" + cont + " = v" + cont + " * v" + ++cont + " ;");                       
                 }            
         }
         cont--;
         if(cont == 0)
-            expPosfija.push(asig + " = v" + ++cont);
+            expPosfija.push(asig + " = v" + ++cont + " ;");
         else
-            expPosfija.push(asig + " = v" + cont);
+            expPosfija.push(asig + " = v" + cont + " ;");
     }
             
     @SuppressWarnings("unchecked")
