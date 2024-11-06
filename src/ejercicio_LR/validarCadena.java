@@ -180,7 +180,7 @@ public class validarCadena extends javax.swing.JFrame
                 }
                 if(errSint) {
                     System.out.println("Estado en el que se quedó: " + pilaSint.peek());
-                    mostrarMensaje("CADENA INVÁLIDA", "La cadena no es aceptada dentro de esta gramática, se esperaba un " + Esperado(), "/img/Close.png");                    
+                    mostrarMensaje("CADENA INVÁLIDA", "La cadena no es aceptada dentro de esta gramática. Se recibició un " + lexer.lexeme + " cuando se esperaba un " + Esperado(), "/img/Close.png");
                     return;
                 } else
                     if(errTabSim) {
